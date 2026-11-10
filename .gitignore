@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+.env*
+.codex/
+.codex-global-state.json*
+auth.json*
+config.toml
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.jsonl
+candidate.json
+manifest.json
+exclusions.json
+*thread-ids*
+*backup*/
