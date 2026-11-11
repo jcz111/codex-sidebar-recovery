@@ -68,17 +68,21 @@ def require_file(path):
     return info
 
 
-def ensure_offline(home):
+def ensure_offline(home, *, check_switchers=True):
     check(sys.platform == "darwin", "This recovery workflow supports macOS only.")
     check(home.is_dir() and not home.is_symlink(), "Invalid Codex home.")
     processes = subprocess.run(["/bin/ps", "-A", "-o", "comm="], check=True,
                                capture_output=True, text=True).stdout
-    apps = re.compile(r"(?:^|/)(ChatGPT|Codex|CC Switch|codexpanel|Visual Studio Code[^/]*)\.app/", re.I)
-    names = {"chatgpt", "codex", "codex-cli", "cc-switch", "codexpanel", "code", "code-insiders"}
+    bundles = r"ChatGPT|Codex"
+    names = {"chatgpt", "codex", "codex-cli"}
+    if check_switchers:
+        bundles += r"|CC Switch|codexpanel|Visual Studio Code[^/]*"
+        names.update({"cc-switch", "codexpanel", "code", "code-insiders"})
+    apps = re.compile(rf"(?:^|/)({bundles})\.app/", re.I)
     for command in processes.splitlines():
         executable = Path(command.strip()).name
         if executable != "browser_crashpad_handler" and (apps.search(command) or executable.casefold() in names):
-            raise Stop("Quit Codex/ChatGPT, VS Code and any account switchers before continuing.")
+            raise Stop("Quit Codex/ChatGPT and its background processes before continuing.")
     paths = [home / filename for filename in (STATE, DATABASE, DATABASE + "-wal", DATABASE + "-shm")]
     probe = subprocess.run(["/usr/sbin/lsof", "-nP", "-t", "--", *[str(p) for p in paths if p.exists()]],
                            capture_output=True, text=True)
@@ -152,9 +156,9 @@ def plan_changes(state, host, source_key, visible, database):
         source_key = next(iter(inactive))
     check(source_key in inactive and source_key != owner, "Invalid inactive source account.")
     source = inactive[source_key]["globals"]
-    old_projects, target_projects = source[PROJECTS], state.get(PROJECTS, {})
+    old_projects, target_projects = source.get(PROJECTS, {}), state.get(PROJECTS, {})
     mappings = state.get(MAPPING, {})
-    old_map, target_map = source[MAPPING][host], mappings.get(host, {})
+    old_map, target_map = source.get(MAPPING, {}).get(host, {}), mappings.get(host, {})
     old_links, target_links = source.get(ASSIGNMENTS, {}), state.get(ASSIGNMENTS, {})
     check(all(isinstance(section, dict) for section in (
         old_projects, target_projects, old_map, target_map, old_links, target_links

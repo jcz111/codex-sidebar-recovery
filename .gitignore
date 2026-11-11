@@ -15,3 +15,6 @@ manifest.json
 exclusions.json
 *thread-ids*
 *backup*/
+
+# Local app builds
+/dist/
